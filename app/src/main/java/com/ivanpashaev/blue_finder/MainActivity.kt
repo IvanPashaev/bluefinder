@@ -1,6 +1,8 @@
 package com.ivanpashaev.blue_finder
 
+import android.Manifest
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -15,27 +17,40 @@ import androidx.core.view.WindowInsetsCompat
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
 
 class MainActivity : AppCompatActivity() {
+    private val foundDevices = mutableListOf<String>()
     private val bluetoothPermissionManager = BluetoothPermissionsManager(this) {
         startBluetoothDiscovery()
     }
 
     private val bluetoothReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?,intent: Intent) {
-            val action: String? = intent?.action
+            val action: String? = intent.action
 
             if (BluetoothDevice.ACTION_FOUND == action) {
 
                 val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                val rssi: Int = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).toInt()
 
-                if (ActivityCompat.checkSelfPermission(this@MainActivity, android.Manifest.permission.BLUETOOTH_CONNECT) ==
-                    PackageManager.PERMISSION_DENIED || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+                val hasPermissions: Boolean = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    ActivityCompat.checkSelfPermission(this@MainActivity,android.Manifest.permission.BLUETOOTH_SCAN) ==
+                            PackageManager.PERMISSION_GRANTED
+                } else {
+                    ActivityCompat.checkSelfPermission(this@MainActivity,android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                            PackageManager.PERMISSION_GRANTED
+                }
+                if (hasPermissions) {
 
                     val deviceName = device?.name ?: "unknown device" //name
                     val deviceHardwareAddress = device?.address //mac address
 
-                    Log.d("BluetoothScan","Find: $deviceName [$deviceHardwareAddress]")
+                    Log.d("BluetoothScan","Find: $deviceName [$deviceHardwareAddress] ($rssi)")
+                    Toast.makeText(this@MainActivity,"$deviceName:($rssi)",Toast.LENGTH_SHORT).show()
+
                 }
             }
         }
@@ -51,7 +66,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        var filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
         registerReceiver(bluetoothReceiver,filter)
 
     }
@@ -60,8 +75,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun startBluetoothDiscovery() {
-        Toast.makeText(this,"Start search",Toast.LENGTH_SHORT).show()
 
+        val hasPermissions: Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ActivityCompat.checkSelfPermission(this@MainActivity,android.Manifest.permission.BLUETOOTH_SCAN) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else {
+            ActivityCompat.checkSelfPermission(this@MainActivity,android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED
+        }
+
+        if (hasPermissions) {
+            val bluetoothManager = getSystemService(BluetoothManager::class.java)
+            val bluetoothAdapter = bluetoothManager?.adapter
+
+            if (bluetoothAdapter?.startDiscovery() == true) {
+                findViewById<TextView>(R.id.textView).text = "Start search..."
+            } else {
+                findViewById<TextView>(R.id.textView).text = "Bluetooth search ERROR"
+            }
+        } else {
+            findViewById<TextView>(R.id.textView).text = "Hasn't permissions"
+        }
 
     }
 }
