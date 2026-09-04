@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
                         deviceHardwareAddress.toString(),rssi)
 
                     foundDevices.add(device)
-                    displayDevices.add("${deviceName} [${deviceHardwareAddress}] (${rssi})")
+                    displayDevices.add("$deviceName [${deviceHardwareAddress}] (${rssi})")
 
                     listAdapter.notifyDataSetChanged()
 
