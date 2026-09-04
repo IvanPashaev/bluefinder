@@ -1,6 +1,5 @@
 package com.ivanpashaev.blue_finder
 
-import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
@@ -18,11 +17,16 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.ArrayAdapter
+import android.widget.ListView
 import android.widget.TextView
-import androidx.recyclerview.widget.RecyclerView
 
 class MainActivity : AppCompatActivity() {
-    private val foundDevices = mutableListOf<String>()
+    private val foundDevices = mutableListOf<BluetoothDeviceItem>()
+    private val displayDevices = mutableListOf<String>()
+
+    private lateinit var listAdapter: ArrayAdapter<String>
+
     private val bluetoothPermissionManager = BluetoothPermissionsManager(this) {
         startBluetoothDiscovery()
     }
@@ -48,6 +52,15 @@ class MainActivity : AppCompatActivity() {
                     val deviceName = device?.name ?: "unknown device" //name
                     val deviceHardwareAddress = device?.address //mac address
 
+                    val device = BluetoothDeviceItem(deviceName,
+                        deviceHardwareAddress.toString(),rssi)
+
+                    foundDevices.add(device)
+                    displayDevices.add("${deviceName} [${deviceHardwareAddress}] (${rssi})")
+
+                    listAdapter.notifyDataSetChanged()
+
+                    findViewById<ListView>(R.id.list_view).adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1,foundDevices)
                     Log.d("BluetoothScan","Find: $deviceName [$deviceHardwareAddress] ($rssi)")
                     Toast.makeText(this@MainActivity,"$deviceName:($rssi)",Toast.LENGTH_SHORT).show()
 
@@ -65,6 +78,9 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        val listView = findViewById<ListView>(R.id.list_view)
+        listAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, displayDevices)
+        listView.adapter = listAdapter
 
         val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
         registerReceiver(bluetoothReceiver,filter)
